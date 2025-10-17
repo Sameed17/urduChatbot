@@ -619,7 +619,7 @@ def train_model(resume=False):
         'max_len': 50,
         'dropout': 0.1,
         'batch_size': 32,
-        'num_epochs': 20,
+        'num_epochs': 10,
         'learning_rate': 1e-4,  # Adam optimizer learning rate
     }
     
@@ -852,16 +852,64 @@ def evaluate_model():
         print(f"📈 Evaluation Results:")
         print(f"Perplexity: {perplexity:.2f}")
         
-        # Sample evaluation
-        print(f"\n🎭 Sample Generations:")
-        print("-" * 25)
-        test_inputs = ["یہ ایک", "پاکستان میں", "اچھا", "فلم"]
+        # Proper evaluation with test data pairs
+        print("\n🔍 Detailed Evaluation Metrics:")
+        print("-" * 35)
         
-        for input_text in test_inputs:
+        # Evaluate on actual test data pairs
+        bleu_scores = []
+        rouge_scores = []
+        chrf_scores = []
+        
+        print(f"\n🎭 Evaluating on Test Data:")
+        print("-" * 30)
+        
+        # Sample a subset of test data for evaluation
+        eval_samples = min(100, len(test_groups))  # Evaluate on 100 samples or all if less
+        
+        for i in range(eval_samples):
+            # Get input and target from test data
+            group = test_groups[i]
+            words = group.split()
+            
+            # Split same way as training (2/5th input, 3/5th target)
+            total_words = len(words)
+            split_point = max(1, total_words * 2 // 5)
+            
+            input_text = ' '.join(words[:split_point])
+            target_text = ' '.join(words[split_point:])
+            
+            # Generate response
             generated = generate_text(model, tokenizer, test_dataset, input_text, max_length=20, device=device)
-            print(f"Input:  {input_text}")
-            print(f"Output: {generated}")
-            print()
+            
+            # Calculate metrics against actual target
+            bleu = calculate_bleu_score(generated, target_text)
+            rouge = calculate_rouge_l(generated, target_text)
+            chrf = calculate_chrf(generated, target_text)
+            
+            bleu_scores.append(bleu)
+            rouge_scores.append(rouge)
+            chrf_scores.append(chrf)
+            
+            # Show first few examples
+            if i < 5:
+                print(f"Sample {i+1}:")
+                print(f"Input:     {input_text}")
+                print(f"Generated: {generated}")
+                print(f"Target:    {target_text}")
+                print(f"BLEU: {bleu:.3f} | ROUGE-L: {rouge:.3f} | chrF: {chrf:.3f}")
+                print()
+        
+        # Average metrics
+        avg_bleu = sum(bleu_scores) / len(bleu_scores)
+        avg_rouge = sum(rouge_scores) / len(rouge_scores)
+        avg_chrf = sum(chrf_scores) / len(chrf_scores)
+        
+        print(f"📊 Evaluation Results (on {eval_samples} samples):")
+        print(f"BLEU Score:    {avg_bleu:.3f}")
+        print(f"ROUGE-L Score: {avg_rouge:.3f}")
+        print(f"chrF Score:    {avg_chrf:.3f}")
+        print(f"Perplexity:    {perplexity:.2f}")
         
     except FileNotFoundError:
         print("❌ Model file not found! Please train the model first.")
